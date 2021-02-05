@@ -1,5 +1,6 @@
 import discord
 import os
+import pickle
 
 client = discord.Client()
 
@@ -19,17 +20,24 @@ responses = {}
 async def on_voice_state_update(member, before, after):
   if (before.channel == None and not after.channel == None):
     try:
-      chan = responses[after.channel.guild.name+member.name][1]
-      resp = responses[after.channel.guild.name+member.name][0]
-      sent = await chan.send(resp,tts=True)
-      await sent.delete(delay = 5)
+      #chan = responses[after.channel.guild.name+member.name][1]
+      #resp = responses[after.channel.guild.name+member.name][0]
+      resp,chan = responses[after.channel.guild.name+member.name].split("||||||||||")
+      print("request to send "+resp+" to "+chan)
+      for c in after.channel.guild.channels:
+        #print(c.name)
+        #print(chan)
+        if (c.name == chan):
+          print("sending message...")
+          sent = await c.send(resp,tts=True)
+          await sent.delete(delay = 5)
     except:
       return
   pass
 scores = {}
 async def processmessage(message):
   #commands 
-  print("okay...")
+  #print("okay...")
   arguments = None
   command = None
   #has an argument
@@ -37,7 +45,7 @@ async def processmessage(message):
   try:
     command = message.content.split(" ",2)[1]
     arguments = message.content.split(" ",2)[2]
-  except:
+  except IndexError:
     print("A command without an argument was passed!")
 
   if (command == "set"):
@@ -56,6 +64,14 @@ async def processmessage(message):
       resp = arguments.split(" ",1)[1][:15]
     except IndexError:
       await message.channel.send("You didn't say what to announce for "+target.name+"!")
-    responses[message.guild.name+target.name] = [resp,message.channel]
+    responses[message.guild.name+target.name] = resp+"||||||||||"+message.channel.name
+    with open('responsefile.pkl', 'wb') as output:
+      pickle.dump(responses, output, pickle.HIGHEST_PROTOCOL)
   pass
+with open('responsefile.pkl', 'rb') as input:
+    responses = pickle.load(input)
+    print(responses)
+    if (responses == None):
+        print("didn't actually get anything")
+        responses = {}
 client.run(os.getenv('TOKEN'))
